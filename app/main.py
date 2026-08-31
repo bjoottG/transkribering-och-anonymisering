@@ -21,7 +21,61 @@ def _process_job(job: Job) -> None:
     if job.kind == "document":
         _process_document(job)
     else:
-        raise UserVisibleError("Transkribering är inte implementerad ännu (kommer i etapp 4).")
+        _process_media(job)
+
+
+def _process_media(job: Job) -> None:
+    from app.anonymization import Anonymizer
+    from app.docx_output import build_codebook_docx, build_transcription_docx
+    from app.transcription import extract_audio, transcribe
+
+    stem = Path(job.filename).stem
+    job.step = "Extraherar ljudspår"
+    job.progress = 2
+    wav = extract_audio(job.upload_path, job.upload_dir / "ljud_16k.wav")
+
+    job.step = "Transkriberar (första körningen laddar modellen — kan ta flera minuter)"
+    job.progress = 5
+
+    def on_progress(fraction: float) -> None:
+        job.progress = 5 + int(70 * fraction)
+
+    segments = transcribe(wav, progress=on_progress)
+    wav.unlink(missing_ok=True)
+    if not segments:
+        raise UserVisibleError("Inget tal kunde identifieras i filen.")
+
+    if job.options.original:
+        job.step = "Skapar transkription"
+        job.progress = 78
+        name = f"{stem}_transkription.docx"
+        build_transcription_docx(
+            job.result_dir / name, job.filename, segments, timestamps=job.options.timestamps
+        )
+        job.result_files.append(name)
+
+    if job.options.anonymized:
+        job.step = "Anonymiserar transkriptionen"
+        job.progress = 82
+        anonymizer = Anonymizer()
+        anonymized_segments = [
+            {"start": s["start"], "end": s["end"], "text": anonymizer.anonymize(s["text"])}
+            for s in segments
+        ]
+        name = f"{stem}_anonymiserad.docx"
+        build_transcription_docx(
+            job.result_dir / name,
+            job.filename,
+            anonymized_segments,
+            timestamps=job.options.timestamps,
+            anonymized=True,
+        )
+        job.result_files.append(name)
+
+        if job.options.keyfile:
+            name = f"{stem}_kodnyckel.docx"
+            build_codebook_docx(job.result_dir / name, job.filename, anonymizer.codebook())
+            job.result_files.append(name)
 
 
 def _process_document(job: Job) -> None:
