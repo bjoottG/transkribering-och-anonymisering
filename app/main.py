@@ -18,7 +18,58 @@ app = FastAPI(title="Transkribering och anonymisering")
 
 
 def _process_job(job: Job) -> None:
-    raise UserVisibleError("Bearbetningen är inte implementerad ännu.")
+    if job.kind == "document":
+        _process_document(job)
+    else:
+        raise UserVisibleError("Transkribering är inte implementerad ännu (kommer i etapp 4).")
+
+
+def _process_document(job: Job) -> None:
+    from app.anonymization import Anonymizer
+    from app.docx_output import build_codebook_docx, build_document_docx
+    from app.extraction import Block, Section, extract
+
+    stem = Path(job.filename).stem
+    job.step = "Läser dokumentet"
+    job.progress = 5
+    sections = extract(job.upload_path)
+
+    if job.options.original:
+        job.step = "Skapar konverterad version"
+        job.progress = 20
+        name = f"{stem}_konverterad.docx"
+        build_document_docx(job.result_dir / name, job.filename, sections)
+        job.result_files.append(name)
+
+    if job.options.anonymized:
+        job.step = "Anonymiserar (kan ta en stund första gången — modellen laddas)"
+        job.progress = 30
+        anonymizer = Anonymizer()
+        anonymized_sections = []
+        total = sum(len(section.blocks) for section in sections) or 1
+        done = 0
+        for section in sections:
+            new_blocks = []
+            for block in section.blocks:
+                if block.type == "paragraph":
+                    new_blocks.append(Block(type="paragraph", text=anonymizer.anonymize(block.text)))
+                else:
+                    new_blocks.append(
+                        Block(type="table", rows=[[anonymizer.anonymize(cell) for cell in row] for row in block.rows])
+                    )
+                done += 1
+                job.progress = 30 + int(60 * done / total)
+            anonymized_sections.append(Section(title=section.title, blocks=new_blocks))
+
+        job.step = "Skapar anonymiserad Word-fil"
+        name = f"{stem}_anonymiserad.docx"
+        build_document_docx(job.result_dir / name, job.filename, anonymized_sections, anonymized=True)
+        job.result_files.append(name)
+
+        if job.options.keyfile:
+            name = f"{stem}_kodnyckel.docx"
+            build_codebook_docx(job.result_dir / name, job.filename, anonymizer.codebook())
+            job.result_files.append(name)
 
 
 job_queue = JobQueue(processor=_process_job)
