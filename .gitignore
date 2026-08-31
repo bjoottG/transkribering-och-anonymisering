@@ -1,0 +1,22 @@
+# Miljö och hemligheter
+.env
+
+# Data (uppladdningar och resultat — kan innehålla personuppgifter)
+data/
+
+# Modellcache
+models/
+.cache/
+hf_cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# OS
+.DS_Store

@@ -1,0 +1,19 @@
+# Webb
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+python-dotenv>=1.0
+
+# ML — installera torch med rätt CUDA-version för din maskin, se README
+torch>=2.2
+transformers>=4.40
+faster-whisper>=1.0
+
+# Dokument
+python-docx>=1.1
+PyMuPDF>=1.24
+openpyxl>=3.1
+
+# Utveckling och test
+pytest>=8.0
+ruff>=0.4
