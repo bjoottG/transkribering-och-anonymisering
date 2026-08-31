@@ -208,7 +208,7 @@ class Anonymizer:
             suffix = r"(s)?" if type_code in _GENITIVE_TYPES else r"()"
             pattern = re.compile(r"\b" + re.escape(normalized) + suffix + r"\b", re.IGNORECASE)
 
-            def substitute(match: "re.Match", tc: str = type_code, norm: str = normalized) -> str:
+            def substitute(match: re.Match, tc: str = type_code, norm: str = normalized) -> str:
                 pseudonym = self._pseudonyms[(tc, norm)]
                 self._register_use(pseudonym)
                 return pseudonym + ("s" if match.group(1) else "")

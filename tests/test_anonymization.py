@@ -97,9 +97,8 @@ class TestPseudonymisering:
         assert "[Person 1]" in result and "Härnösand" in result
 
     def test_lag_score_ignoreras(self):
-        ner = lambda text: [
-            {"entity_group": "PER", "word": "Osäker", "start": 0, "end": 6, "score": 0.30}
-        ]
+        def ner(text):
+            return [{"entity_group": "PER", "word": "Osäker", "start": 0, "end": 6, "score": 0.30}]
         result = Anonymizer(ner=ner).anonymize("Osäker träff i texten.")
         assert "Osäker" in result
 

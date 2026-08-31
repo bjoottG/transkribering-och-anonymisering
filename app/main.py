@@ -109,7 +109,10 @@ def _process_document(job: Job) -> None:
                     new_blocks.append(Block(type="paragraph", text=anonymizer.anonymize(block.text)))
                 else:
                     new_blocks.append(
-                        Block(type="table", rows=[[anonymizer.anonymize(cell) for cell in row] for row in block.rows])
+                        Block(
+                            type="table",
+                            rows=[[anonymizer.anonymize(cell) for cell in row] for row in block.rows],
+                        )
                     )
                 done += 1
                 job.progress = 30 + int(60 * done / total)

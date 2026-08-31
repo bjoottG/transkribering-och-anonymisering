@@ -8,7 +8,7 @@ import docx
 from docx.shared import Pt, RGBColor
 
 
-def _new_document(title: str, subtitle: str) -> "docx.document.Document":
+def _new_document(title: str, subtitle: str) -> docx.document.Document:
     document = docx.Document()
     document.add_heading(title, level=1)
     meta = document.add_paragraph(subtitle)

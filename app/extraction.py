@@ -44,7 +44,9 @@ def _extract_pdf(path: Path) -> list:
     try:
         doc = fitz.open(path)
     except Exception:
-        raise UserVisibleError("PDF-filen kunde inte öppnas — den kan vara skadad eller lösenordsskyddad.")
+        raise UserVisibleError(
+            "PDF-filen kunde inte öppnas — den kan vara skadad eller lösenordsskyddad."
+        ) from None
 
     sections: list = []
     has_text = False
@@ -64,7 +66,8 @@ def _extract_pdf(path: Path) -> list:
             sections.append(Section(title=f"Sida {page_number}", blocks=blocks))
     if not has_text:
         raise UserVisibleError(
-            "Dokumentet saknar textlager. Skannade PDF:er utan text stöds inte (OCR ingår inte i denna version)."
+            "Dokumentet saknar textlager. Skannade PDF:er utan text stöds inte "
+            "(OCR ingår inte i denna version)."
         )
     return sections
 
@@ -72,7 +75,8 @@ def _extract_pdf(path: Path) -> list:
 def _extract_docx(path: Path) -> list:
     if path.suffix.lower() == ".doc":
         raise UserVisibleError(
-            "Det gamla Word-formatet (.doc) kan inte läsas. Öppna filen i Word, spara om som .docx och försök igen."
+            "Det gamla Word-formatet (.doc) kan inte läsas. Öppna filen i Word, "
+            "spara om som .docx och försök igen."
         )
     import docx
     from docx.table import Table as DocxTable
@@ -81,7 +85,9 @@ def _extract_docx(path: Path) -> list:
     try:
         document = docx.Document(str(path))
     except Exception:
-        raise UserVisibleError("Word-filen kunde inte öppnas — den kan vara skadad eller i fel format.")
+        raise UserVisibleError(
+            "Word-filen kunde inte öppnas — den kan vara skadad eller i fel format."
+        ) from None
 
     blocks: list = []
     try:
@@ -103,14 +109,17 @@ def _extract_docx(path: Path) -> list:
 def _extract_xlsx(path: Path) -> list:
     if path.suffix.lower() == ".xls":
         raise UserVisibleError(
-            "Det gamla Excel-formatet (.xls) kan inte läsas. Öppna filen i Excel, spara om som .xlsx och försök igen."
+            "Det gamla Excel-formatet (.xls) kan inte läsas. Öppna filen i Excel, "
+            "spara om som .xlsx och försök igen."
         )
     import openpyxl
 
     try:
         workbook = openpyxl.load_workbook(path, data_only=True, read_only=True)
     except Exception:
-        raise UserVisibleError("Excel-filen kunde inte öppnas — den kan vara skadad eller i fel format.")
+        raise UserVisibleError(
+            "Excel-filen kunde inte öppnas — den kan vara skadad eller i fel format."
+        ) from None
 
     sections: list = []
     for sheet in workbook.worksheets:

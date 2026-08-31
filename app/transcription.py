@@ -86,7 +86,9 @@ def _transcribe_transformers(wav: Path, progress: Optional[Callable] = None) -> 
     result: list = []
     for chunk in output.get("chunks", []):
         start, end = chunk.get("timestamp") or (0.0, 0.0)
-        result.append({"start": start or 0.0, "end": end or start or 0.0, "text": chunk.get("text", "").strip()})
+        result.append(
+            {"start": start or 0.0, "end": end or start or 0.0, "text": chunk.get("text", "").strip()}
+        )
     if not result and output.get("text"):
         result.append({"start": 0.0, "end": 0.0, "text": output["text"].strip()})
     if progress is not None:
@@ -115,4 +117,4 @@ def transcribe(wav: Path, progress: Optional[Callable] = None) -> list:
             raise UserVisibleError(
                 "Transkriberingen misslyckades. Kontrollera att modellen är nedladdad "
                 "(scripts/download_models.py) och se serverloggen för detaljer."
-            )
+            ) from None

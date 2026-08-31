@@ -104,7 +104,7 @@ class JobQueue:
     def __init__(self, processor: Callable[[Job], None]):
         self._processor = processor
         self._jobs: dict[str, Job] = {}
-        self._queue: "queue.Queue[str]" = queue.Queue()
+        self._queue: queue.Queue[str] = queue.Queue()
         self._lock = threading.Lock()
         self._worker: Optional[threading.Thread] = None
         self._cleaner: Optional[threading.Thread] = None
@@ -178,7 +178,9 @@ class JobQueue:
         cutoff = time.time() - max_age
         removed = 0
         with self._lock:
-            old_ids = [j.id for j in self._jobs.values() if j.created_at < cutoff and j.status != "processing"]
+            old_ids = [
+                j.id for j in self._jobs.values() if j.created_at < cutoff and j.status != "processing"
+            ]
             for job_id in old_ids:
                 del self._jobs[job_id]
         for job_id in old_ids:
