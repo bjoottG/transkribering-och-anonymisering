@@ -14,6 +14,8 @@ All bearbetning sker lokalt på den egna maskinen — inga filer eller data skic
 externa tjänster. Det enda nätverksanropet är nedladdning av modellerna från Hugging Face
 vid första start (eller via `scripts/download_models.py`).
 
+> **Ny användare?** Följ steg-för-steg-guiden i [KOM-IGANG.md](KOM-IGANG.md).
+
 ## Krav
 
 - Python 3.11+
