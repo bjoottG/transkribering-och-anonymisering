@@ -9,11 +9,64 @@
 <body>
   <header>
     <h1>Transkribering och anonymisering</h1>
-    <p class="tagline">Svensk transkribering (KB-Whisper) och anonymisering (KB-BERT) — all bearbetning sker lokalt.</p>
+    <p class="tagline">Svensk transkribering (KB-Whisper) och anonymisering (KB-BERT) — all bearbetning sker lokalt på servern.</p>
+    <p class="device" id="device-info"></p>
   </header>
+
   <main>
-    <p>Gränssnittet är under uppbyggnad.</p>
+    <section id="dropzone" tabindex="0" aria-label="Släpp filer här eller klicka för att välja">
+      <p class="drop-title">Dra och släpp filer här — eller klicka för att välja</p>
+      <p class="drop-formats">
+        Ljud: mp3, wav, m4a, flac, ogg, aac, wma &nbsp;·&nbsp;
+        Film: mp4, mov, avi, mkv, webm, wmv &nbsp;·&nbsp;
+        Dokument: pdf, docx, xlsx
+      </p>
+      <input type="file" id="file-input" multiple hidden>
+    </section>
+
+    <section id="pending-list" aria-live="polite"></section>
+
+    <h2 id="jobs-heading" hidden>Jobb</h2>
+    <section id="job-list" aria-live="polite"></section>
   </main>
+
+  <template id="pending-template">
+    <div class="card pending">
+      <div class="card-head">
+        <span class="filename"></span>
+        <span class="filekind"></span>
+      </div>
+      <div class="options">
+        <label class="opt-original"><input type="checkbox" data-opt="original" checked> <span></span></label>
+        <label class="opt-anonymized"><input type="checkbox" data-opt="anonymized"> Anonymiserad version</label>
+        <label class="opt-keyfile"><input type="checkbox" data-opt="keyfile" disabled>
+          Kodnyckel <span class="keyfile-note">⚠ innehåller ursprungliga personuppgifter</span></label>
+        <label class="opt-timestamps"><input type="checkbox" data-opt="timestamps" checked> Tidsstämplar</label>
+      </div>
+      <p class="option-error" hidden></p>
+      <div class="card-actions">
+        <button class="start">Starta</button>
+        <button class="remove secondary">Ta bort</button>
+      </div>
+    </div>
+  </template>
+
+  <template id="job-template">
+    <div class="card job">
+      <div class="card-head">
+        <span class="filename"></span>
+        <span class="status-badge"></span>
+      </div>
+      <div class="progress-track"><div class="progress-bar"></div></div>
+      <p class="step"></p>
+      <p class="job-error" hidden></p>
+      <ul class="files"></ul>
+      <div class="card-actions download-all-wrap" hidden>
+        <a class="download-all button-link" download>Ladda ner alla (zip)</a>
+      </div>
+    </div>
+  </template>
+
   <script src="/static/app.js"></script>
 </body>
 </html>
