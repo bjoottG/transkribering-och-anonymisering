@@ -47,7 +47,9 @@ def _describe_image(png_bytes: bytes) -> str:
     client = _get_client()
     request = dict(
         model=settings.vision_model,
-        max_tokens=1024,
+        # Rymmer både modellens interna resonemang och själva beskrivningen —
+        # för snålt tak ger tomma svar när resonemanget äter upp budgeten.
+        max_tokens=2048,
         messages=[
             {
                 "role": "user",
