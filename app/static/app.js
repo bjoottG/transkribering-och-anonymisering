@@ -14,6 +14,7 @@ const pendingTemplate = document.getElementById("pending-template");
 const jobTemplate = document.getElementById("job-template");
 
 const pollers = new Map();
+let visionAvailable = false;
 
 function fileKind(name) {
   const ext = name.split(".").pop().toLowerCase();
@@ -28,9 +29,11 @@ function fileKind(name) {
 fetch("/api/health")
   .then((r) => r.json())
   .then((h) => {
+    visionAvailable = Boolean(h.vision_available);
     const device = h.device === "cuda" ? "GPU (CUDA)" : "CPU";
     document.getElementById("device-info").textContent =
-      `Beräkningsenhet: ${device} · Whisper: ${h.whisper_model} · NER: ${h.ner_model}`;
+      `Beräkningsenhet: ${device} · Whisper: ${h.whisper_model} · NER: ${h.ner_model}` +
+      (visionAvailable ? ` · Skärmbeskrivning: ${h.vision_model}` : "");
   })
   .catch(() => {});
 
@@ -80,6 +83,15 @@ function buildPendingCard(file, kind) {
     isMedia ? "Transkription (oanonymiserad)" : "Oanonymiserad (konverterad) version";
   if (!isMedia) card.querySelector(".opt-timestamps").hidden = true;
 
+  const visionLabel = card.querySelector(".opt-vision");
+  if (kind !== "video") {
+    visionLabel.hidden = true;
+  } else if (!visionAvailable) {
+    visionLabel.querySelector("input").disabled = true;
+    visionLabel.classList.add("disabled");
+    visionLabel.querySelector(".vision-note").textContent = "kräver ANTHROPIC_API_KEY i .env";
+  }
+
   const boxes = {};
   card.querySelectorAll("input[data-opt]").forEach((box) => (boxes[box.dataset.opt] = box));
   const errorEl = card.querySelector(".option-error");
@@ -109,6 +121,7 @@ function buildPendingCard(file, kind) {
         anonymized: boxes.anonymized.checked,
         keyfile: boxes.keyfile.checked,
         timestamps: boxes.timestamps.checked,
+        vision: boxes.vision.checked,
       });
       card.remove();
       showJob(job);

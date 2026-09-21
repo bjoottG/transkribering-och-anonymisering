@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import json
 import zipfile
 from pathlib import Path
 
@@ -10,7 +11,15 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.jobs import ALL_EXTENSIONS, Job, JobOptions, JobQueue, UserVisibleError, file_kind
+from app.jobs import (
+    ALL_EXTENSIONS,
+    VIDEO_EXTENSIONS,
+    Job,
+    JobOptions,
+    JobQueue,
+    UserVisibleError,
+    file_kind,
+)
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -26,7 +35,12 @@ def _process_job(job: Job) -> None:
 
 def _process_media(job: Job) -> None:
     from app.anonymization import Anonymizer
-    from app.docx_output import build_codebook_docx, build_transcription_docx
+    from app.docx_output import (
+        build_codebook_docx,
+        build_timeline_docx,
+        build_transcription_docx,
+        merge_timeline,
+    )
     from app.transcription import extract_audio, transcribe
 
     stem = Path(job.filename).stem
@@ -36,27 +50,62 @@ def _process_media(job: Job) -> None:
 
     job.step = "Transkriberar (första körningen laddar modellen — kan ta flera minuter)"
     job.progress = 5
+    transcribe_span = 55 if job.options.vision else 70
 
     def on_progress(fraction: float) -> None:
-        job.progress = 5 + int(70 * fraction)
+        job.progress = 5 + int(transcribe_span * fraction)
 
     segments = transcribe(wav, progress=on_progress)
     wav.unlink(missing_ok=True)
     if not segments:
         raise UserVisibleError("Inget tal kunde identifieras i filen.")
 
+    frame_descriptions: list = []
+    if job.options.vision:
+        from app.frames import extract_keyframes
+        from app.vision import describe_frames
+
+        job.step = "Extraherar nyckelbilder ur filmen"
+        job.progress = 61
+        frames = extract_keyframes(job.upload_path, job.upload_dir / "bilder")
+        if frames:
+            job.step = f"Beskriver {len(frames)} skärmbilder via Claude API"
+
+            def on_vision(fraction: float) -> None:
+                job.progress = 63 + int(22 * fraction)
+
+            frame_descriptions = describe_frames(frames, progress=on_vision)
+            for frame in frames:
+                frame.path.unlink(missing_ok=True)
+
+    def write_timeline_json(name: str, events: list) -> None:
+        payload = {"källa": job.filename, "händelser": events}
+        (job.result_dir / name).write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        job.result_files.append(name)
+
+    job.step = "Skapar Word-filer"
+    job.progress = 88
+
     if job.options.original:
-        job.step = "Skapar transkription"
-        job.progress = 78
         name = f"{stem}_transkription.docx"
         build_transcription_docx(
             job.result_dir / name, job.filename, segments, timestamps=job.options.timestamps
         )
         job.result_files.append(name)
+        if job.options.vision:
+            events = merge_timeline(segments, frame_descriptions)
+            name = f"{stem}_tidslinje.docx"
+            build_timeline_docx(
+                job.result_dir / name, job.filename, events, timestamps=job.options.timestamps
+            )
+            job.result_files.append(name)
+            write_timeline_json(f"{stem}_tidslinje.json", events)
 
     if job.options.anonymized:
-        job.step = "Anonymiserar transkriptionen"
-        job.progress = 82
+        job.step = "Anonymiserar"
+        job.progress = 92
         anonymizer = Anonymizer()
         anonymized_segments = [
             {"start": s["start"], "end": s["end"], "text": anonymizer.anonymize(s["text"])}
@@ -71,6 +120,22 @@ def _process_media(job: Job) -> None:
             anonymized=True,
         )
         job.result_files.append(name)
+        if job.options.vision:
+            anonymized_descriptions = [
+                {"time": d["time"], "text": anonymizer.anonymize(d["text"])}
+                for d in frame_descriptions
+            ]
+            events = merge_timeline(anonymized_segments, anonymized_descriptions)
+            name = f"{stem}_tidslinje_anonymiserad.docx"
+            build_timeline_docx(
+                job.result_dir / name,
+                job.filename,
+                events,
+                timestamps=job.options.timestamps,
+                anonymized=True,
+            )
+            job.result_files.append(name)
+            write_timeline_json(f"{stem}_tidslinje_anonymiserad.json", events)
 
         if job.options.keyfile:
             name = f"{stem}_kodnyckel.docx"
@@ -152,6 +217,8 @@ def health() -> dict:
         "whisper_model": settings.whisper_model,
         "ner_model": settings.ner_model,
         "max_file_size_mb": settings.max_file_size_mb,
+        "vision_available": settings.vision_available,
+        "vision_model": settings.vision_model,
     }
 
 
@@ -162,6 +229,7 @@ async def create_job(
     anonymized: bool = Form(False),
     keyfile: bool = Form(False),
     timestamps: bool = Form(True),
+    vision: bool = Form(False),
 ) -> dict:
     filename = Path(file.filename or "").name
     if not filename:
@@ -170,8 +238,19 @@ async def create_job(
     if kind is None:
         tillatna = ", ".join(sorted(ALL_EXTENSIONS))
         raise HTTPException(400, f"Filformatet stöds inte. Tillåtna format: {tillatna}.")
+    if vision:
+        if Path(filename).suffix.lower().lstrip(".") not in VIDEO_EXTENSIONS:
+            raise HTTPException(400, "Skärmbildsbeskrivning är bara möjlig för filmfiler.")
+        if not settings.vision_available:
+            raise HTTPException(
+                400,
+                "Skärmbildsbeskrivning kräver en API-nyckel. Lägg ANTHROPIC_API_KEY i .env "
+                "och starta om applikationen.",
+            )
 
-    options = JobOptions(original=original, anonymized=anonymized, keyfile=keyfile, timestamps=timestamps)
+    options = JobOptions(
+        original=original, anonymized=anonymized, keyfile=keyfile, timestamps=timestamps, vision=vision
+    )
     error = options.validate()
     if error:
         raise HTTPException(400, error)
@@ -236,11 +315,12 @@ def download_file(job_id: str, name: str) -> FileResponse:
     path = job.result_dir / name
     if not path.is_file():
         raise HTTPException(404, "Filen finns inte längre på disk.")
-    return FileResponse(
-        path,
-        filename=name,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    media_type = (
+        "application/json"
+        if name.endswith(".json")
+        else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
+    return FileResponse(path, filename=name, media_type=media_type)
 
 
 @app.get("/api/jobs/{job_id}/download-all")

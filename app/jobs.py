@@ -38,12 +38,15 @@ class JobOptions:
     original: transkription (media) resp. oanonymiserad konverterad version (dokument).
     anonymized: anonymiserad version. keyfile: kodnyckel (kräver anonymized).
     timestamps: tidsstämplar i transkriptionen (endast media).
+    vision: skärmbildsbeskrivning via Claude API (endast film) — ger en tidslinje
+    med tal + skärminnehåll i de valda varianterna (original/anonymiserad).
     """
 
     original: bool = True
     anonymized: bool = False
     keyfile: bool = False
     timestamps: bool = True
+    vision: bool = False
 
     def validate(self) -> Optional[str]:
         if not self.original and not self.anonymized:
@@ -94,6 +97,7 @@ class Job:
                 "anonymized": self.options.anonymized,
                 "keyfile": self.options.keyfile,
                 "timestamps": self.options.timestamps,
+                "vision": self.options.vision,
             },
         }
 

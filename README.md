@@ -9,10 +9,21 @@ Webbapplikation som körs **lokalt** för att:
   regexdetektering av personnummer, telefonnummer, e-postadresser och registreringsnummer.
 - **Generera kodnyckel** (valfritt): en separat Word-fil som kopplar pseudonymer
   (`[Person 1]` osv.) till de ursprungliga uppgifterna.
+- **Beskriva skärminnehåll i filmer** (valfritt, per uppladdning): för skärminspelningar
+  (t.ex. utbildningsfilmer) extraheras nyckelbilder med ffmpeg och beskrivs av Claude API
+  (menyval, fältnamn, knapptexter, statusar). Resultatet blir en **tidslinje** med tal +
+  skärminnehåll som Word-fil och JSON, i valbart anonymiserat och/eller oanonymiserat
+  utförande.
 
 All bearbetning sker lokalt på den egna maskinen — inga filer eller data skickas till
 externa tjänster. Det enda nätverksanropet är nedladdning av modellerna från Hugging Face
 vid första start (eller via `scripts/download_models.py`).
+
+**Undantag — skärmbildsbeskrivning:** den valfria funktionen ovan skickar de extraherade
+bildrutorna (aldrig ljud, tal eller dokument) till Anthropics Claude API. Den är avstängd
+tills en `ANTHROPIC_API_KEY` läggs i `.env`, väljs aktivt per uppladdning, och ska bara
+användas för material utan känsliga uppgifter (t.ex. filmer som redan är publicerade).
+Anthropic tränar inte modeller på API-data som standard.
 
 > **Ny användare?** Följ steg-för-steg-guiden i [KOM-IGANG.md](KOM-IGANG.md).
 
@@ -64,7 +75,8 @@ Alla resultat blir Word-filer (`.docx`).
 
 | Filtyp | Val |
 |---|---|
-| Ljud/film (`mp3, wav, m4a, flac, ogg, aac, wma, mp4, mov, avi, mkv, webm, wmv`) | Transkription, anonymiserad transkription, kodnyckel, tidsstämplar av/på |
+| Ljud (`mp3, wav, m4a, flac, ogg, aac, wma`) | Transkription, anonymiserad transkription, kodnyckel, tidsstämplar av/på |
+| Film (`mp4, mov, avi, mkv, webm, wmv`) | Som ljud + valfri skärmbildsbeskrivning → tidslinje (Word + JSON) |
 | Dokument (`pdf, docx, doc, xlsx, xls`) | Anonymiserad version, oanonymiserad (konverterad) version, kodnyckel |
 
 **⚠ Kodnyckeln innehåller de ursprungliga personuppgifterna** — hantera och lagra den
@@ -95,6 +107,8 @@ app/main.py           FastAPI-routes och statiska filer
 app/config.py         inställningar från .env
 app/jobs.py           jobbkö (sekventiell GPU-kö), status, automatisk rensning
 app/transcription.py  ffmpeg-extraktion + KB-Whisper via faster-whisper
+app/frames.py         nyckelbilder ur film (scendetektering + dedup)
+app/vision.py         skärmbildsbeskrivning via Claude API (opt-in)
 app/anonymization.py  KB-BERT-NER + regex + pseudonymisering + kodnyckel
 app/extraction.py     textextraktion ur pdf/docx/xlsx
 app/docx_output.py    generering av Word-filer

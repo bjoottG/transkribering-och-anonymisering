@@ -99,3 +99,48 @@ def build_codebook_docx(path: Path, source_name: str, entries: list) -> Path:
             row.cells[3].text = str(entry.count)
     document.save(str(path))
     return path
+
+
+def merge_timeline(segments: list, frame_descriptions: list) -> list:
+    """Slå ihop talsegment och bildbeskrivningar till en tidssorterad tidslinje.
+
+    Returnerar list[dict] med time, kind ("tal" | "skärm") och text.
+    """
+    events = [
+        {"time": float(s.get("start", 0)), "kind": "tal", "text": str(s.get("text", "")).strip()}
+        for s in segments
+        if str(s.get("text", "")).strip()
+    ]
+    events += [
+        {"time": float(d.get("time", 0)), "kind": "skärm", "text": str(d.get("text", "")).strip()}
+        for d in frame_descriptions
+        if str(d.get("text", "")).strip()
+    ]
+    events.sort(key=lambda e: (e["time"], 0 if e["kind"] == "tal" else 1))
+    return events
+
+
+def build_timeline_docx(
+    path: Path,
+    source_name: str,
+    events: list,
+    timestamps: bool = True,
+    anonymized: bool = False,
+) -> Path:
+    """Tidslinje (tal + skärmbeskrivningar) som Word-fil. events från merge_timeline."""
+    label = "Anonymiserad tidslinje" if anonymized else "Tidslinje"
+    document = _new_document(
+        source_name, f"{label} (tal + skärminnehåll) — genererad {_now_string()}"
+    )
+    for event in events:
+        paragraph = document.add_paragraph()
+        if timestamps:
+            run = paragraph.add_run(f"[{_timestamp(event['time'])}] ")
+            run.font.color.rgb = RGBColor(0x60, 0x60, 0x60)
+        prefix = paragraph.add_run("Tal: " if event["kind"] == "tal" else "Skärm: ")
+        prefix.bold = True
+        if event["kind"] != "tal":
+            prefix.font.color.rgb = RGBColor(0x0B, 0x5F, 0xA5)
+        paragraph.add_run(event["text"])
+    document.save(str(path))
+    return path

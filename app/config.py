@@ -46,6 +46,15 @@ class Settings:
     cleanup_hours: int = _env_int("CLEANUP_HOURS", 24)
     port: int = _env_int("PORT", 8000)
     data_dir: Path = field(default_factory=lambda: BASE_DIR / "data")
+    # Skärmbildsbeskrivning (vision) — kräver ANTHROPIC_API_KEY, annars avstängd
+    vision_model: str = _env("VISION_MODEL", "claude-opus-5")
+    scene_threshold: float = _env_float("SCENE_THRESHOLD", 0.04)
+    frame_interval: int = _env_int("FRAME_INTERVAL", 20)
+    frame_max: int = _env_int("FRAME_MAX", 60)
+
+    @property
+    def vision_available(self) -> bool:
+        return bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())
 
     @property
     def max_file_size_bytes(self) -> int:

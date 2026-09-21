@@ -61,3 +61,17 @@ def test_kodnyckel_tabell_och_varning(tmp_path):
 def test_tom_kodnyckel(tmp_path):
     path = build_codebook_docx(tmp_path / "nyckel.docx", "källa.docx", [])
     assert "kodnyckeln är tom" in _all_text(path)
+
+
+def test_tidslinje_docx(tmp_path):
+    from app.docx_output import build_timeline_docx
+
+    events = [
+        {"time": 0.0, "kind": "tal", "text": "Hej och välkomna."},
+        {"time": 5.0, "kind": "skärm", "text": "Startsidan med menyn Ärenden visas."},
+    ]
+    path = build_timeline_docx(tmp_path / "tidslinje.docx", "film.mp4", events, timestamps=True)
+    text = _all_text(path)
+    assert "film.mp4" in text
+    assert "[00:00:00] Tal: Hej och välkomna." in text
+    assert "[00:00:05] Skärm: Startsidan med menyn Ärenden visas." in text

@@ -97,6 +97,12 @@ enligt steg 3 om du öppnat en ny terminal).
 **⚠ Viktigt om kodnyckeln:** den innehåller de ursprungliga personuppgifterna
 (vem `[Person 1]` är osv.). Hantera och lagra den separat från den anonymiserade filen.
 
+**Valfritt — beskriv skärminnehåll i filmer:** för skärminspelningar kan appen även
+beskriva vad som syns på skärmen (menyer, fältnamn, knappar) och bygga en tidslinje
+med tal + skärm. Det kräver en API-nyckel från <https://console.anthropic.com> i `.env`
+(`ANTHROPIC_API_KEY=sk-ant-...`) och skickar bildrutorna till Claude API — använd bara
+för material utan känsliga uppgifter. Utan nyckel är kryssrutan avstängd.
+
 Uppladdningar och resultat sparas i mappen `data/` och rensas automatiskt efter 24 timmar.
 
 ## Vanliga problem
