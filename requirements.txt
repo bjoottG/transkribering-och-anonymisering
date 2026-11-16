@@ -2,7 +2,7 @@
 fastapi>=0.110
 uvicorn[standard]>=0.29
 python-multipart>=0.0.9
-python-dotenv>=1.0
+python-dotenv>=1.2.4
 
 # ML — installera torch med rätt CUDA-version för din maskin, se README
 torch>=2.2
